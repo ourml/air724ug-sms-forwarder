@@ -19,5 +19,5 @@
 
 > PS: 本项目代码仅在非合宙官方开发板上测试运行，开发板照片如下
 
-![Front](https://github.com/ourml/air724ug-sms-forwarder/raw/master/IMG/front.jng "Front")
-![Back](https://github.com/ourml/air724ug-sms-forwarder/raw/master/IMG/back.jng "Back")
+![Front](https://github.com/ourml/air724ug-sms-forwarder/blob/main/IMG/front.jpg "Front")
+![Back](https://github.com/ourml/air724ug-sms-forwarder/blob/main/IMG/back.jpg "Back")
