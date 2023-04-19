@@ -1,4 +1,5 @@
 require "utilHttp"
+require "utilFS"
 local config = require "config"
 
 module(..., package.seeall)
@@ -134,7 +135,8 @@ function add(msg, channels, groupName)
         table.insert(msgQueue, {
             channel = channel,
             msg = msg,
-            group = groupName
+            group = groupName,
+            retry = 0
         })
     end
     sys.publish("NEW_MSG")
@@ -142,9 +144,32 @@ function add(msg, channels, groupName)
     log.debug("utilNotify.add", "添加到消息队列, 当前队列长度:", #msgQueue)
 end
 
+local function prepareForReboot()
+    log.warn("utilNotify.prepareForReboot", "剩余消息队列:", #msgQueue)
+
+    local item
+    local saved = 0
+    while true do
+        if next(msgQueue) ~= nil then
+            item = msgQueue[1]
+
+            local rs = utilFS.appendMsg(item.msg)
+            if rs then
+                table.remove(msgQueue, 1)
+                saved = saved + 1
+            end
+        else
+            break
+        end
+    end
+
+    log.warn("utilNotify.prepareForReboot", "已保存的消息:", saved)
+    sys.publish("REBOOT_READY", true)
+end
+
 -- 轮询消息队列
 local function poll()
-    local item, result
+    local item
     while true do
         -- 消息队列非空, 且网络已注册
         if next(msgQueue) ~= nil and socket.isReady() then
@@ -153,7 +178,32 @@ local function poll()
             item = msgQueue[1]
             table.remove(msgQueue, 1)
 
-            utilNotify.send(item.msg, item.channel, item.group)
+            if item.retry > (config.NOTIFY_RETRY_MAX or 100) then
+                log.error("utilNotify.poll", "超过最大重发次数", "msg:", item.msg)
+                log.info("utilNotify.poll", "消息重发失败, 即将保存本地后重启")
+                utilFS.appendMsg(item.msg)
+                sys.wait(50)
+                -- 准备重启
+                sys.publish("REBOOT_PREPARE")
+
+                -- 最多等待5min来保存剩余消息队列
+                local waitResult, data = sys.waitUntil("REBOOT_READY", 1000 * 60 * 5)
+                if not waitResult or data then
+                    log.warn("utilNotify.poll", "系统重启...")
+                    sys.restart("重发消息失败重启")
+                end
+            else
+                utilNotify.send(item.msg, item.channel, item.group)
+                item.retry = item.retry + 1
+
+                -- 等待超时时间2min，超过就返回false而且不等了
+                local waitResult, data = sys.waitUntil("MSG_SENDED", 1000 * 60 * 2)
+                -- 超时或失败就重新把消息放回队尾
+                if not waitResult or not data then
+                    table.insert(msgQueue, item)
+                    sys.wait(1000 * 5)
+                end
+            end
 
             sys.wait(50)
         else
@@ -163,3 +213,6 @@ local function poll()
 end
 
 sys.taskInit(poll)
+
+-- 订阅预重启通知
+sys.subscribe("REBOOT_PREPARE", prepareForReboot)

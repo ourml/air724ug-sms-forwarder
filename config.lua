@@ -19,5 +19,11 @@ return {
     QUERY_TRAFFIC_INTERVAL = 1000 * 60 * 60 * 24 * 7,
     --
     -- 开机通知
-    BOOT_NOTIFY = true
+    BOOT_NOTIFY = true,
+    --
+    -- 通知最大重发次数
+    NOTIFY_RETRY_MAX = 100,
+    --
+    -- 短信重启指令, 当给指定号码发送此短信时(eg: SMS,手机号码,reboot)，会自动重启系统
+    SMS_CTRL_REBOOT_KEY = "reboot",
 }

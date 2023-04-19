@@ -5,6 +5,7 @@ module(..., package.seeall)
 local function httpCbFunc(result, prompt, head, body)
     log.info("utilHttp.httpCbFunc", result, prompt)
     if result and head then
+        sys.publish("MSG_SENDED", true)
         for k, v in ipairs(head) do
             log.info("utilHttp.httpCbFunc", k .. ": " .. v)
         end
@@ -15,6 +16,7 @@ local function httpCbFunc(result, prompt, head, body)
 
     if not result then
         log.error("utilHttp.fetch 请求失败:" .. prompt)
+        sys.publish("MSG_SENDED", false)
     end
 end
 

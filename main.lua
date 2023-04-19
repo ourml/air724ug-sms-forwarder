@@ -43,7 +43,32 @@ require "utilHttp"
 require "utilNotify"
 require "utilMobile"
 require "utilCall"
+require "utilFS"
 local config = require "config"
+
+-- 判断是否是短信控制指令
+-- @string smsText 短信内容
+-- @string toNumber 要发送短信的号码
+-- @return isSmsCtrl
+local function smsCtrl(smsText, toNumber)
+    local isSmsCtrl = false
+
+    if smsText ~= "" and toNumber ~= "" and #smsText >= 5 and #toNumber <= 20 and smsText ~= config.SMS_CTRL_REBOOT_KEY then
+        sms.send(toNumber, common.utf8ToGb2312(smsText))
+        isSmsCtrl = true
+    elseif smsText == config.SMS_CTRL_REBOOT_KEY then
+        isSmsCtrl = true
+        -- 重启前先保存当前队列
+        sys.publish("REBOOT_PREPARE")
+        local waitResult, data = sys.waitUntil("REBOOT_READY", 1000 * 60 * 5)
+
+        if not waitResult or data then
+            sys.restart("短信控制重启")
+        end
+    end
+
+    return isSmsCtrl
+end
 
 -- 短信接收回调
 sms.setNewSmsCb(function(senderNumber, smsContent, m)
@@ -54,13 +79,9 @@ sms.setNewSmsCb(function(senderNumber, smsContent, m)
     local time = string.format("%d/%02d/%02d %02d:%02d:%02d", now.year, now.month, now.day, now.hour, now.min, now.sec)
 
     -- 短信控制
-    local isSmsCtrl = false
     local receiverNumber, smsContent2beSent = smsText:match("^SMS,(+?%d+),(.+)$")
     receiverNumber, smsContent2beSent = receiverNumber or "", smsContent2beSent or ""
-    if smsContent2beSent ~= "" and receiverNumber ~= "" and #receiverNumber >= 5 and #receiverNumber <= 20 then
-        sms.send(receiverNumber, common.utf8ToGb2312(smsContent2beSent))
-        isSmsCtrl = true
-    end
+    local isSmsCtrl = smsCtrl(smsContent2beSent, receiverNumber)
 
     -- 发送通知
     utilNotify.add({smsText, "", "发件号码: " .. senderNumber, "发件时间: " .. time,
@@ -79,6 +100,15 @@ local function booter()
     -- 定时查询流量
     if config.QUERY_TRAFFIC_INTERVAL and config.QUERY_TRAFFIC_INTERVAL >= 1000 * 60 then
         sys.timerLoopStart(utilMobile.queryTraffic, config.QUERY_TRAFFIC_INTERVAL)
+    end
+
+    -- 读取本地短信并发送
+    local msgQueue = utilFS.readMsg(true)
+    log.info("main.booter", "本地短信数量:", #msgQueue)
+    if msgQueue ~= nil and #msgQueue > 0 then
+        for _, msgContent in ipairs(msgQueue) do
+            utilNotify.add(msgContent)
+        end
     end
 
 end
