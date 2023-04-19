@@ -1,5 +1,3 @@
-require "fs"
-
 module(..., package.seeall)
 
 -- 短信存储位置
@@ -14,10 +12,15 @@ function appendMsg(msg)
     msg = msg .. msgSplitSign
 
     log.info("utilFS.appendMsg", "content:", msg, "path:", msgFilePath)
+    local fileHnadle = io.open(msgFilePath, "a+")
 
-    local result = io.writeFile(msgFilePath, msg, "a+b")
-
-    return result
+    if fileHnadle then
+        fileHnadle:write(msg)
+        fileHnadle:close()
+        return true
+    else
+        return false
+    end
 end
 
 -- 读取本地短信
@@ -26,23 +29,25 @@ end
 function readMsg(empty)
     local msgQueue = {}
 
-    local isFileExists = io.exists(msgFilePath)
-    if not isFileExists then
-        log.warn("utilFS.readMsg", "文件不存在:", msgFilePath)
-        return nil
-    end
-
-    local msg = io.readFile(msgFilePath)
-    if msg == nil or msg == "" then
-        log.warn("utilFS.readMsg", "文件不存在或为空:", msgFilePath)
-        return nil
-    end
-
-    local msgSplit = msg:split(msgSplitSign)
-    for _, msgContent in ipairs(msgSplit) do
-        if msg ~= "" then
-            table.insert(msgQueue, msg)
+    local fileHandle = io.open(msgFilePath, "r")
+    if fileHandle then
+        local msg = fileHandle:read("*all")
+        if msg == nil or msg == "" then
+            log.warn("utilFS.readMsg", "文件不存在或为空:", msgFilePath)
+            fileHandle:close()
+            return msgQueue
         end
+
+        fileHandle:close()
+        local msgSplit = msg:split(msgSplitSign)
+        for _, msgContent in ipairs(msgSplit) do
+            if msg ~= "" then
+                table.insert(msgQueue, msg)
+            end
+        end
+    else
+        log.error("utilFS.readMsg", "读取文件出错")
+        return msgQueue
     end
 
     -- 清空短信
@@ -57,5 +62,26 @@ end
 -- 清空本地短信
 function emptyMsg()
     log.warn("utilFS.emptyMsg", "清空本地短信")
-    io.writeFile(msgFilePath, "", "w+b")
+    local fileHandle = io.open(msgFilePath, "w")
+
+    if fileHandle then
+        fileHandle:write()
+        fileHandle:close()
+        log.info("utilFS.emptyMsg", "本地短信已清空")
+    else
+        log.error("utilFS.emptyMsg", "本地短信清空失败")
+    end
+end
+
+-- 初始化本地短信文件
+function initFile()
+    local fileHandle = io.open(msgFilePath, "a+")
+
+    if fileHandle then
+        fileHandle:write()
+        fileHandle:close()
+        log.info("utilFS.initFile", "初始化本地短信文件成功")
+    else
+        log.error("utilFS.initFile", "初始化本地文件失败")
+    end
 end

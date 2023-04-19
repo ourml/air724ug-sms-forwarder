@@ -46,6 +46,12 @@ require "utilCall"
 require "utilFS"
 local config = require "config"
 
+-- 错误日志上报
+require "errDump"
+if config.ERROR_DUMP_HOST ~= nil and config.ERROR_DUMP_HOST ~= "" then
+    errDump.request(config.ERROR_DUMP_HOST, nil, true)
+end
+
 -- 判断是否是短信控制指令
 -- @string smsText 短信内容
 -- @string toNumber 要发送短信的号码
@@ -90,7 +96,11 @@ sms.setNewSmsCb(function(senderNumber, smsContent, m)
 end)
 
 local function booter()
-    sys.waitUntil("IP_READY_IND")
+    local waitResult = sys.waitUntil("IP_READY_IND", 1000 * 60 * 3)
+
+    if not waitResult then
+        sys.restart("网络未就绪, 重新启动")
+    end
 
     -- 开机通知
     if config.BOOT_NOTIFY then
@@ -105,10 +115,12 @@ local function booter()
     -- 读取本地短信并发送
     local msgQueue = utilFS.readMsg(true)
     log.info("main.booter", "本地短信数量:", #msgQueue)
-    if msgQueue ~= nil and #msgQueue > 0 then
+    if #msgQueue > 0 then
         for _, msgContent in ipairs(msgQueue) do
             utilNotify.add(msgContent)
         end
+    else
+        utilFS.initFile()
     end
 
 end
