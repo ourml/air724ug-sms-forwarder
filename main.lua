@@ -1,6 +1,6 @@
 -- 必须在这个位置定义PROJECT和VERSION变量
 PROJECT = "sms_forwarder"
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 -- 加载日志功能模块，并且设置日志输出等级
 -- 如果关闭调用log模块接口输出的日志，等级设置为log.LOG_SILENT即可
@@ -76,6 +76,21 @@ local function smsCtrl(smsText, toNumber)
     return isSmsCtrl
 end
 
+local function readAndSendLocalSms(isInit)
+    -- 读取本地短信并发送
+    local msgQueue = utilFS.readMsg(true)
+    log.info("main.readAndSendLocalSms", "本地短信数量:", #msgQueue)
+    if #msgQueue > 0 then
+        for _, msgContent in ipairs(msgQueue) do
+            utilNotify.add(msgContent)
+        end
+    end
+
+    if isInit then
+        utilFS.initFile()
+    end
+end
+
 -- 短信接收回调
 sms.setNewSmsCb(function(senderNumber, smsContent, m)
     local smsText = common.gb2312ToUtf8(smsContent)
@@ -112,18 +127,15 @@ local function booter()
         sys.timerLoopStart(utilMobile.queryTraffic, config.QUERY_TRAFFIC_INTERVAL)
     end
 
-    -- 读取本地短信并发送
-    local msgQueue = utilFS.readMsg(true)
-    log.info("main.booter", "本地短信数量:", #msgQueue)
-    if #msgQueue > 0 then
-        for _, msgContent in ipairs(msgQueue) do
-            utilNotify.add(msgContent)
-        end
-    else
-        utilFS.initFile()
+    readAndSendLocalSms(true)
+
+    -- 定时检查并发送本地短信
+    if config.CHECK_LOCAL_SMS_INTERVAL and config.CHECK_LOCAL_SMS_INTERVAL > 0 then
+        sys.timerLoopStart(readAndSendLocalSms, config.CHECK_LOCAL_SMS_INTERVAL)
     end
 
 end
+
 sys.taskInit(booter)
 
 -- 启动系统框架

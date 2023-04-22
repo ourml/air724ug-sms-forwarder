@@ -33,7 +33,7 @@ function readMsg(empty)
     if fileHandle then
         local msg = fileHandle:read("*all")
         if msg == nil or msg == "" then
-            log.warn("utilFS.readMsg", "文件不存在或为空:", msgFilePath)
+            log.warn("utilFS.readMsg", "文件为空:", msgFilePath)
             fileHandle:close()
             return msgQueue
         end
