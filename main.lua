@@ -49,6 +49,7 @@ local config = require "config"
 -- 错误日志上报
 require "errDump"
 if config.ERROR_DUMP_HOST ~= nil and config.ERROR_DUMP_HOST ~= "" then
+    errDump.setNetworkLog(true)
     errDump.request(config.ERROR_DUMP_HOST, nil, true)
 end
 
