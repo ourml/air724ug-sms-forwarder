@@ -83,7 +83,7 @@ local function readAndSendLocalSms(isInit)
     log.info("main.readAndSendLocalSms", "本地短信数量:", #msgQueue)
     if #msgQueue > 0 then
         for _, msgContent in ipairs(msgQueue) do
-            utilNotify.add(msgContent)
+            utilNotify.add(msgContent, nil, "短信")
         end
     end
 
