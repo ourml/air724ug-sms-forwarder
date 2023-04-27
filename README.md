@@ -17,7 +17,7 @@
 精简部分功能，增加未接来电短信通知（如需更多通知方式，请参考 [https://github.com/lageev/air780e-forwarder](https://github.com/lageev/air780e-forwarder)）
 
 
-> PS: 本项目代码仅在非合宙官方开发板上测试运行，开发板照片如下
+> PS: 本项目代码仅在非合宙官方(银尔达)开发板上测试运行，开发板照片如下
 
 ![Front](https://github.com/ourml/air724ug-sms-forwarder/blob/main/IMG/front.jpg "Front")
 ![Back](https://github.com/ourml/air724ug-sms-forwarder/blob/main/IMG/back.jpg "Back")
